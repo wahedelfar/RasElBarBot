@@ -4,7 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
 
 # توكن البوت
-TOKEN = os.getenv('7370819571:AAECdLgmMmw-rh1u-2qnXo2OBXhaXG1gnLc')
+TOKEN = os.getenv('7370819571:AAFznL9VI2xs8nhMkv6giBHuFkdKV84fP34')
 if not TOKEN:
     raise ValueError("BOT_TOKEN not set in environment variables")
 
