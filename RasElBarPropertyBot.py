@@ -4,12 +4,14 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
 
 # توكن البوت
-TOKEN = os.getenv('BOT_TOKEN', '7370819571:AAECdLgmMmw-rh1u-2qnXo2OBXhaXG1gnLc')
+TOKEN = os.getenv('BOT_TOKEN')
+if not TOKEN:
+    raise ValueError("BOT_TOKEN not set in environment variables")
 
 # Chat ID بتاعك عشان الإشعارات
 ADMIN_CHAT_ID = '8084142659'
 
-# رابط دعوة المجموعة (استبدله برابط مجموعتك)
+# رابط دعوة المجموعة
 GROUP_INVITE_LINK = 'https://t.me/+tdAO0DNeIvlmNTRk'
 
 # إعداد قاعدة بيانات SQLite
@@ -261,7 +263,7 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
         "📢 *انضم لمجموعتنا لعروض حصرية على عقارات رأس البر!*\n"
-        f"👉 {https://t.me/raselbarbot}"
+        f"👉 {GROUP_INVITE_LINK}"
     )
     await update.message.reply_text(message, parse_mode='MarkdownV2')
 
@@ -274,7 +276,7 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
                 "🏖️ *عروض عقارات رأس البر!*\n"
                 "شقق إيجار وتمليك بأسعار مميزة! 🏠\n"
                 "📞 تواصل معنا: 01026569682\n"
-                f"📢 انضم لمجموعتنا: {https://t.me/+tdAO0DNeIvlmNTRk}\n"
+                f"📢 انضم لمجموعتنا: {GROUP_INVITE_LINK}\n"
                 "🌐 زور موقعنا: https://ras-elbar-egar.netlify.app/"
             )
             await update.message.reply_text(message, parse_mode='MarkdownV2')
@@ -360,7 +362,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(contact_message, parse_mode='MarkdownV2')
 
     elif query.data == 'booking_request':
-        context.user_data['booking'] = True  # تفعيل وضع انتظار بيانات الحجز
+        context.user_data['booking'] = True
         await query.message.reply_text(
             "📝 من فضلك، أرسل بيانات الحجز في رسالة واحدة:\n"
             "- الاسم\n"
@@ -388,7 +390,6 @@ async def handle_booking_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         data = update.message.text
         timestamp = str(update.message.date)
 
-        # تحليل البيانات (افتراض: العميل بيبعت البيانات بنفس الترتيب)
         try:
             lines = data.split('\n')
             name = lines[0].strip()
@@ -399,7 +400,6 @@ async def handle_booking_data(update: Update, context: ContextTypes.DEFAULT_TYPE
             await update.message.reply_text("⚠️ من فضلك، أرسل البيانات بالترتيب الصحيح:\n- الاسم\n- رقم التليفون\n- اسم الشقة\n- تواريخ الحجز")
             return
 
-        # تخزين البيانات في SQLite
         conn = sqlite3.connect('bookings.db')
         c = conn.cursor()
         c.execute("INSERT INTO bookings (user_id, name, phone, apartment, dates, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
@@ -407,10 +407,8 @@ async def handle_booking_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         conn.commit()
         conn.close()
 
-        # تأكيد للعميل
         await update.message.reply_text("✅ تم تسجيل طلب الحجز! سنتواصل معك قريبًا للتأكيد.")
 
-        # إشعار للأدمن
         admin_message = (
             f"🔔 *طلب حجز جديد*\n\n"
             f"👤 *الاسم*: {name}\n"
@@ -424,7 +422,6 @@ async def handle_booking_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         except Exception as e:
             print(f"Error sending admin notification: {e}")
 
-        # إلغاء وضع انتظار البيانات
         context.user_data['booking'] = False
 
 def main():
@@ -436,7 +433,14 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUPS, group_message_handler))
     app.add_handler(CallbackQueryHandler(button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_booking_data))
-    app.run_polling()
+
+    port = int(os.getenv('PORT', 5000))
+    app.run_webhook(
+        listen='0.0.0.0',
+        port=port,
+        url_path=TOKEN,
+        webhook_url=f'https://{os.getenv("RAILWAY_PUBLIC_DOMAIN")}/{TOKEN}'
+    )
 
 if __name__ == '__main__':
     main()
