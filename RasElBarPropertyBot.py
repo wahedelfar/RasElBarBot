@@ -4,16 +4,15 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
 
 # توكن البوت
-
 TOKEN = os.getenv('7370819571:AAF697gifhVCaY6Y5JpVxvJj8AUdqyi6u04')
 if not TOKEN:
-    raise ValueError("BOT_TOKEN not set in environment variables")
+    raise ValueError("7370819571:AAF697gifhVCaY6Y5JpVxvJj8AUdqyi6u04")
 
 # Chat ID بتاعك عشان الإشعارات
 ADMIN_CHAT_ID = '8084142659'
 
 # رابط دعوة المجموعة
-GROUP_INVITE_LINK = 'https://t.me/+tdAO0DNeIvlmNTRk'
+GROUP_INVITE_LINK = 'https://t.me/raselbarbot'
 
 # إعداد قاعدة بيانات SQLite
 def init_db():
@@ -264,7 +263,7 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
         "📢 *انضم لمجموعتنا لعروض حصرية على عقارات رأس البر!*\n"
-        f"👉 {GROUP_INVITE_LINK}"
+        f"👉 {https://t.me/raselbarbot}"
     )
     await update.message.reply_text(message, parse_mode='MarkdownV2')
 
@@ -277,7 +276,7 @@ async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
                 "🏖️ *عروض عقارات رأس البر!*\n"
                 "شقق إيجار وتمليك بأسعار مميزة! 🏠\n"
                 "📞 تواصل معنا: 01026569682\n"
-                f"📢 انضم لمجموعتنا: {GROUP_INVITE_LINK}\n"
+                f"📢 انضم لمجموعتنا: {https://t.me/raselbarbot}\n"
                 "🌐 زور موقعنا: https://ras-elbar-egar.netlify.app/"
             )
             await update.message.reply_text(message, parse_mode='MarkdownV2')
