@@ -1,0 +1,202 @@
+{
+    "apartments_sale": [
+        {
+            "name": "شقة مبانى جديده في رأس البر",
+            "description": "شقه 3 غرف نوم، 2 حمام، تشطيب سوبر لوكس",
+            "price": "4,200,000 جنيه",
+            "location": "شارع 89 قريبه من البحر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+                "https://images.unsplash.com/photo-1600566752355-35792bed2ac1",
+                "https://images.unsplash.com/photo-1592595896551-12b371d546d5",
+                "https://images.unsplash.com/photo-1600585154526-990dced4db0d"
+            ]
+        },
+        {
+            "name": "شقة بالمستشارين",
+            "description": "غرفتين نوم، حمام، تشطيب جيد",
+            "price": "900,000 جنيه",
+            "location": "أول رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585153490-76fb20a32601",
+                "https://images.unsplash.com/photo-1600585152915-0a61d4f4b0a7",
+                "https://images.unsplash.com/photo-1592595896616-c37162298647",
+                "https://images.unsplash.com/photo-1600585154084-4e5e2d2b8283"
+            ]
+        }
+    ],
+    "chalets_sale": [
+        {
+            "name": "شقه ثانى مطل البحر",
+            "description": "غرفتين، إطلالة مباشرة على البحر",
+            "price": "3,000,000 جنيه",
+            "location": "شاطئ رأس البر الرئيسي",
+            "images": [
+                "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
+                "https://images.unsplash.com/photo-1570129477492-45c003edd2be",
+                "https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db",
+                "https://images.unsplash.com/photo-1570129476875-1b65d6e944d7"
+            ]
+        }
+    ],
+    "land_sale": [
+        {
+            "name": "أرض بالإمتداد العمرانى",
+            "description": "قطعة أرض صافى المبانى 100 متر، تصلح للبناء",
+            "price": "6,000,000 جنيه",
+            "location": "رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1500382017468-9049fed747ef",
+                "https://images.unsplash.com/photo-1600585152220-90363b99e7e4",
+                "https://images.unsplash.com/photo-1600585152906-8c9f3f9f3a3b",
+                "https://images.unsplash.com/photo-1600585153088-7e6b2b2b2e2d"
+            ]
+        }
+    ],
+    "apartments_rent": [
+        {
+            "name": "شقة لوكس سابع مطل على البحر",
+            "description": "شقة 2 غرف نوم، متاح جميع الأدوار، شارع 91",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "شارع 91، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+                "https://images.unsplash.com/photo-1600566752355-35792bed2ac1",
+                "https://images.unsplash.com/photo-1592595896551-12b371d546d5",
+                "https://images.unsplash.com/photo-1600585154526-990dced4db0d"
+            ]
+        },
+        {
+            "name": "شقة 3 غرف دور ثاني بحري غربي",
+            "description": "شقة 3 غرف نوم، قريبة من البحر، شارع 85",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "شارع 85، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585153490-76fb20a32601",
+                "https://images.unsplash.com/photo-1600585152915-0a61d4f4b0a7",
+                "https://images.unsplash.com/photo-1592595896616-c37162298647",
+                "https://images.unsplash.com/photo-1600585154084-4e5e2d2b8283"
+            ]
+        },
+        {
+            "name": "شقة غرفتين ثالث مطل البحر",
+            "description": "شقة 2 غرف نوم، مكيفة، إطلالة رائعة، شارع 45",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "شارع 45، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
+                "https://images.unsplash.com/photo-1570129477492-45c003edd2be",
+                "https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db",
+                "https://images.unsplash.com/photo-1570129476875-1b65d6e944d7"
+            ]
+        },
+        {
+            "name": "جناح 4 غرف أول مطل من البحر",
+            "description": "جناح 4 غرف، دور ثالث بحري غربي، إطلالة رائعة، شارع 87",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "شارع 87، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+                "https://images.unsplash.com/photo-1600566752355-35792bed2ac1",
+                "https://images.unsplash.com/photo-1592595896551-12b371d546d5",
+                "https://images.unsplash.com/photo-1600585154526-990dced4db0d"
+            ]
+        },
+        {
+            "name": "شقة سوبر لوكس أول مطل البحر",
+            "description": "شقة 2 غرف نوم، إطلالة رائعة على شاطئ رأس البر",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585153490-76fb20a32601",
+                "https://images.unsplash.com/photo-1600585152915-0a61d4f4b0a7",
+                "https://images.unsplash.com/photo-1592595896616-c37162298647",
+                "https://images.unsplash.com/photo-1600585154084-4e5e2d2b8283"
+            ]
+        },
+        {
+            "name": "شقة سوبر لوكس بجوار سوق 89",
+            "description": "شقة 2 غرف نوم، دور ثالث، بجوار سوق 89",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "بجوار سوق 89، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
+                "https://images.unsplash.com/photo-1570129477492-45c003edd2be",
+                "https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db",
+                "https://images.unsplash.com/photo-1570129476875-1b65d6e944d7"
+            ]
+        },
+        {
+            "name": "شقة غربي دور ثاني",
+            "description": "شقة 3 غرف نوم، قريبة من البحر وسوق 89",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "بجوار سوق 89، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+                "https://images.unsplash.com/photo-1600566752355-35792bed2ac1",
+                "https://images.unsplash.com/photo-1592595896551-12b371d546d5",
+                "https://images.unsplash.com/photo-1600585154526-990dced4db0d"
+            ]
+        },
+        {
+            "name": "شقة بحري شرقي بجوار سوق 89",
+            "description": "شقة 2 غرف نوم، دور ثالث، بحري شرقي",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "بجوار سوق 89، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585153490-76fb20a32601",
+                "https://images.unsplash.com/photo-1600585152915-0a61d4f4b0a7",
+                "https://images.unsplash.com/photo-1592595896616-c37162298647",
+                "https://images.unsplash.com/photo-1600585154084-4e5e2d2b8283"
+            ]
+        },
+        {
+            "name": "شقة فاخرة ثالث مطل البحر",
+            "description": "شقة 3 غرف نوم، إطلالة رائعة، شارع 97",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "شارع 97، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
+                "https://images.unsplash.com/photo-1570129477492-45c003edd2be",
+                "https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db",
+                "https://images.unsplash.com/photo-1570129476875-1b65d6e944d7"
+            ]
+        },
+        {
+            "name": "شقق بجوار سوق 89",
+            "description": "شقة 3 غرف نوم أو غرفتين، بجوار سوق 89",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "بجوار سوق 89، رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+                "https://images.unsplash.com/photo-1600566752355-35792bed2ac1",
+                "https://images.unsplash.com/photo-1592595896551-12b371d546d5",
+                "https://images.unsplash.com/photo-1600585154526-990dced4db0d"
+            ]
+        },
+        {
+            "name": "شقة فاخرة مطلة على البحر 11",
+            "description": "شقة 3 غرف نوم، مكيفة، إطلالة رائعة",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1600585153490-76fb20a32601",
+                "https://images.unsplash.com/photo-1600585152915-0a61d4f4b0a7",
+                "https://images.unsplash.com/photo-1592595896616-c37162298647",
+                "https://images.unsplash.com/photo-1600585154084-4e5e2d2b8283"
+            ]
+        },
+        {
+            "name": "شقة فاخرة مطلة على البحر 12",
+            "description": "شقة 3 غرف نوم، مكيفة، إطلالة رائعة",
+            "price": "حسب توقيت الحجز والمده",
+            "location": "رأس البر",
+            "images": [
+                "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
+                "https://images.unsplash.com/photo-1570129477492-45c003edd2be",
+                "https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db",
+                "https://images.unsplash.com/photo-1570129476875-1b65d6e944d7"
+            ]
+        }
+    ]
+}
