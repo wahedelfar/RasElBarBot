@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: RasElBarBot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python RasElBarPropertyBot.py
+    envVars:
+      - key: TELEGRAM_TOKEN
+        scope: run
+        value: ""
+      - key: ADMIN_CHAT_ID
+        scope: run
+        value: ""
+      - key: PORT
+        scope: run
+        value: "5000"
