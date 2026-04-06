@@ -283,7 +283,7 @@ def main():
     # تشغيل البوت
     # ملاحظة: تم تبسيط التشغيل ليعمل محلياً أو على الخادم بسهولة
     port = int(os.getenv('PORT', 5000))
-    domain = os.getenv('RAILWAY_PUBLIC_DOMAIN')
+    domain = os.getenv('RENDER_EXTERNAL_HOSTNAME') or os.getenv('RAILWAY_PUBLIC_DOMAIN')
     
     if domain:
         logger.info(f"Starting webhook on port {port} with domain {domain}")
@@ -299,3 +299,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
