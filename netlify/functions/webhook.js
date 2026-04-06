@@ -6,6 +6,7 @@ const BOT_TOKEN = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN || "737081
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || "8084142659";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const GROUP_INVITE_LINK = "https://t.me/raselbarbot";
+const GROUP_CHAT_ID = "-1002550095639";
 
 // Load properties data
 const propertiesPath = path.resolve(__dirname, "../../properties.json");
@@ -55,6 +56,38 @@ function buildMainMenu() {
 const backButton = {
   inline_keyboard: [[{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }]],
 };
+
+// ─── Check Group Membership ───
+async function isMember(userId) {
+  try {
+    const res = await tg("getChatMember", { chat_id: GROUP_CHAT_ID, user_id: userId });
+    if (res.ok) {
+      const status = res.result.status;
+      return ["member", "administrator", "creator"].includes(status);
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function sendJoinPrompt(chatId) {
+  await tg("sendMessage", {
+    chat_id: chatId,
+    text:
+      "🔒 *ثانية واحدة بس!*\n\n" +
+      "عشان تشوف الإعلانات والعروض، انضم لجروبنا الأول 👇\n" +
+      "مجاني وهتلاقي فيه كل جديد عن عقارات رأس البر\n\n" +
+      "✅ بعد ما تشترك، ارجع هنا واضغط *تم الاشتراك* 🎉",
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "📢 انضم للجروب", url: GROUP_INVITE_LINK }],
+        [{ text: "✅ تم الاشتراك", callback_data: "check_membership" }],
+      ],
+    },
+  });
+}
 
 // ─── Send Start Menu ───
 async function sendStart(chatId) {
@@ -106,10 +139,47 @@ async function handleCallback(query) {
 
   await tg("answerCallbackQuery", { callback_query_id: query.id });
 
+  // Check membership for content sections
+  const protectedSections = ["apartments_sale", "garages_sale", "land_sale", "ownership_prices", "apartments_for_sale", "apartments_rent"];
+  if (protectedSections.includes(data)) {
+    const userId = query.from.id;
+    const member = await isMember(userId);
+    if (!member) {
+      await sendJoinPrompt(chatId);
+      return;
+    }
+  }
+
   switch (data) {
     case "main_menu":
       await sendStart(chatId);
       break;
+
+    case "check_membership": {
+      const userId = query.from.id;
+      const member = await isMember(userId);
+      if (member) {
+        await tg("sendMessage", {
+          chat_id: chatId,
+          text: "🎉 *تمام، أنت معانا!*\nاتفضل اختار اللي يعجبك 👇",
+          parse_mode: "Markdown",
+        });
+        await sendStart(chatId);
+      } else {
+        await tg("sendMessage", {
+          chat_id: chatId,
+          text: "😅 *لسه مشتركتش!*\nاضغط على الزر ده وانضم، وبعدين ارجع اضغط تم الاشتراك",
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📢 انضم للجروب", url: GROUP_INVITE_LINK }],
+              [{ text: "✅ تم الاشتراك", callback_data: "check_membership" }],
+            ],
+          },
+        });
+      }
+      break;
+    }
 
     case "apartments_sale":
     case "garages_sale":
