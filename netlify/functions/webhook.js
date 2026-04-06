@@ -2,7 +2,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 
-const BOT_TOKEN = process.env.TELEGRAM_TOKEN;
+const BOT_TOKEN = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN || "7370819571:AAHycxAHIt8VRm5tM468hePYtgHke6uChhk";
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || "8084142659";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const GROUP_INVITE_LINK = "https://t.me/raselbarbot";
