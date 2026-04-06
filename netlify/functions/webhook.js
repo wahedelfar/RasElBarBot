@@ -141,7 +141,7 @@ async function handleCallback(query) {
   await tg("answerCallbackQuery", { callback_query_id: query.id });
 
   // Check membership for content sections
-  const protectedSections = ["apartments_sale", "garages_sale", "land_sale", "ownership_prices", "apartments_for_sale", "apartments_rent"];
+  const protectedSections = ["apartments_sale", "garages_sale", "land_sale", "ownership_prices", "apartments_for_sale", "apartments_rent", "area_inside", "area_extension", "area_mostasharin", "area_kentucky", "area_all"];
   if (protectedSections.includes(data)) {
     const userId = query.from.id;
     const member = await isMember(userId);
@@ -183,6 +183,89 @@ async function handleCallback(query) {
     }
 
     case "apartments_sale":
+      await tg("sendMessage", {
+        chat_id: chatId,
+        text:
+          "🏠 *شقق تمليك في رأس البر*\n" +
+          "━━━━━━━━━━━━━━━━\n\n" +
+          "حدد المنطقة اللي تهمك 👇",
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🌊 داخل رأس البر (الشوارع المرقمة)", callback_data: "area_inside" }],
+            [{ text: "🏗️ الامتداد العمراني", callback_data: "area_extension" }],
+            [{ text: "🏢 المستشارين", callback_data: "area_mostasharin" }],
+            [{ text: "🏪 العاصي وكنتاكي", callback_data: "area_kentucky" }],
+            [{ text: "📜 عرض كل الشقق", callback_data: "area_all" }],
+            [{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }],
+          ],
+        },
+      });
+      break;
+
+    case "area_inside":
+    case "area_extension":
+    case "area_mostasharin":
+    case "area_kentucky":
+    case "area_all": {
+      const areaKey = data.replace("area_", "");
+      const areaNames = {
+        inside: "🌊 داخل رأس البر",
+        extension: "🏗️ الامتداد العمراني",
+        mostasharin: "🏢 المستشارين",
+        kentucky: "🏪 العاصي وكنتاكي",
+        all: "📜 كل الشقق"
+      };
+      const allApts = PROPERTIES["apartments_sale"] || [];
+      const filtered = areaKey === "all" ? allApts : allApts.filter(p => p.area === areaKey);
+      
+      if (!filtered || filtered.length === 0) {
+        await tg("sendMessage", {
+          chat_id: chatId,
+          text: `لا توجد إعلانات حالياً في *${areaNames[areaKey]}*\n\n📞 كلمنا وهنوفرلك: \`01026569682\``,
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "« رجوع للمناطق", callback_data: "apartments_sale" }],
+              [{ text: "🏠 القائمة الرئيسية", callback_data: "main_menu" }],
+            ],
+          },
+        });
+      } else {
+        await tg("sendMessage", {
+          chat_id: chatId,
+          text: `${areaNames[areaKey]} — *${filtered.length} إعلان*`,
+          parse_mode: "Markdown",
+        });
+        for (const prop of filtered) {
+          const phoneLine = prop.phone ? `\n📞 *للتواصل*: ${prop.phone}` : '';
+          const caption =
+            `🏠 *${prop.name}*\n` +
+            `📝 *الوصف*: ${prop.description}\n` +
+            `💰 *السعر*: ${prop.price}\n` +
+            `📍 *الموقع*: ${prop.location}` +
+            phoneLine;
+          if (prop.images && prop.images.length > 0) {
+            await tg("sendPhoto", { chat_id: chatId, photo: prop.images[0], caption, parse_mode: "Markdown" });
+          } else {
+            await tg("sendMessage", { chat_id: chatId, text: caption, parse_mode: "Markdown" });
+          }
+        }
+        await tg("sendMessage", {
+          chat_id: chatId,
+          text: "📞 للمزيد من التفاصيل تواصل معنا: `01026569682`",
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "« رجوع للمناطق", callback_data: "apartments_sale" }],
+              [{ text: "🏠 القائمة الرئيسية", callback_data: "main_menu" }],
+            ],
+          },
+        });
+      }
+      break;
+    }
+
     case "garages_sale":
     case "land_sale":
       await sendProperties(chatId, data);
