@@ -3,7 +3,7 @@ import json
 import sqlite3
 import logging
 import re
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ChatMember
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -12,7 +12,9 @@ from telegram.ext import (
     ContextTypes,
     filters,
     ConversationHandler,
+    ChatMemberHandler,
 )
+from telegram.constants import ChatMemberStatus
 
 # إعداد التسجيل (Logging)
 logging.basicConfig(
@@ -33,7 +35,6 @@ GET_NAME, GET_PHONE, GET_APARTMENT, GET_DATES = range(4)
 def escape_markdown(text):
     if not text:
         return ""
-    # الرموز التي يجب الهروب منها في MarkdownV2
     escape_chars = r'_*[]()~`>#+-=|{}.!'
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', str(text))
 
@@ -59,6 +60,24 @@ def init_db():
 
 init_db()
 
+# رسالة الترحيب الفاخرة
+def get_welcome_message():
+    return (
+        "🏖️ *مرحباً بك في عالم عقارات رأس البر الفاخرة\\!* 🏖️\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🏠 *اكتشف أفضل العقارات والشقق الفاخرة*\n"
+        "💰 *أسعار تنافسية وخدمة عملاء متميزة*\n"
+        "📍 *مواقع استراتيجية قريبة من البحر*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "✨ *ماذا نقدم لك؟*\n"
+        "🏠 شقق للبيع والإيجار\n"
+        "🏖️ شاليهات فاخرة مطلة على البحر\n"
+        "🌄 أراضي للاستثمار\n"
+        "📞 استشارات عقارية مجانية\n"
+        "🎯 خدمة حجز سريعة وآمنة\n\n"
+        "👇 *اختر ما يناسبك من الأزرار أدناه*"
+    )
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🏠 شقق للبيع", callback_data='apartments_sale')],
@@ -74,11 +93,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📢 انضم لمجموعتنا", url=GROUP_INVITE_LINK)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    text = "مرحبًا بك في بوت عقارات رأس البر\\! اختر نوع العقار أو الخدمة:"
+    text = get_welcome_message()
     if update.message:
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='MarkdownV2')
     elif update.callback_query:
         await update.callback_query.message.reply_text(text, reply_markup=reply_markup, parse_mode='MarkdownV2')
+
+# معالج انضمام أعضاء جدد للمجموعات والقنوات
+async def handle_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    result = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
+    
+    if result.status == ChatMemberStatus.MEMBER:
+        # رسالة ترحيب خاصة للأعضاء الجدد في المجموعات
+        welcome_text = (
+            f"👋 *مرحباً {update.effective_user.first_name}\\!*\n\n"
+            "🏖️ أهلاً وسهلاً في مجموعة عقارات رأس البر الفاخرة\\!\n\n"
+            "نحن هنا لمساعدتك في إيجاد أفضل العقارات والشقق في رأس البر\\.\n"
+            "اضغط على الزر أدناه لتصفح عروضنا المميزة\\:"
+        )
+        keyboard = [
+            [InlineKeyboardButton("🏠 تصفح العقارات", url=f"https://t.me/raselbarbot_bot?start=welcome")],
+            [InlineKeyboardButton("📞 تواصل فوري", url="https://wa.me/201026569682")],
+            [InlineKeyboardButton("🌐 موقعنا الإلكتروني", url="https://ras-elbar-egar.netlify.app/")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        try:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=welcome_text,
+                reply_markup=reply_markup,
+                parse_mode='MarkdownV2'
+            )
+        except Exception as e:
+            logger.error(f"Error sending welcome message: {e}")
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
@@ -187,7 +235,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(contact_info, parse_mode='MarkdownV2', disable_web_page_preview=True)
 
     elif data == 'booking_request':
-        await query.message.reply_text("📝 لبدء طلب الحجز، من فضلك أرسل *اسمك بالكامل*:")
+        await query.message.reply_text("📝 لبدء طلب الحجز، من فضلك أرسل *اسمك بالكامل*:", parse_mode='MarkdownV2')
         return GET_NAME
 
     elif data == 'contact':
@@ -273,6 +321,9 @@ def main():
         fallbacks=[CommandHandler('cancel', cancel)],
     )
 
+    # معالج انضمام الأعضاء الجدد
+    app.add_handler(ChatMemberHandler(handle_new_member, ChatMemberHandler.MY_CHAT_MEMBER))
+
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('contact', contact))
     app.add_handler(CommandHandler('menu', start))
@@ -281,7 +332,6 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUPS, group_message_handler))
 
     # تشغيل البوت
-    # ملاحظة: تم تبسيط التشغيل ليعمل محلياً أو على الخادم بسهولة
     port = int(os.getenv('PORT', 5000))
     domain = os.getenv('RENDER_EXTERNAL_HOSTNAME') or os.getenv('RAILWAY_PUBLIC_DOMAIN')
     
