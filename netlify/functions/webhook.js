@@ -38,7 +38,7 @@ function buildMainMenu() {
   return {
     inline_keyboard: [
       [{ text: "🏠 شقق للبيع", callback_data: "apartments_sale" }],
-      [{ text: "🏖️ شاليهات للبيع", callback_data: "chalets_sale" }],
+      [{ text: "🚗 جراجات للبيع", callback_data: "garages_sale" }],
       [{ text: "🌄 أراضي للبيع", callback_data: "land_sale" }],
       [{ text: "💰 أسعار التمليك", callback_data: "ownership_prices" }],
       [{ text: "🏠 شقق للبيع (كاش/تقسيط)", callback_data: "apartments_for_sale" }],
@@ -112,7 +112,7 @@ async function handleCallback(query) {
       break;
 
     case "apartments_sale":
-    case "chalets_sale":
+    case "garages_sale":
     case "land_sale":
       await sendProperties(chatId, data);
       break;
