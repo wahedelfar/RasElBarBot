@@ -73,11 +73,13 @@ async function sendProperties(chatId, category) {
     return;
   }
   for (const prop of props) {
+    const phoneLine = prop.phone ? `\n📞 *للتواصل*: ${prop.phone}` : '';
     const caption =
       `🏠 *${prop.name}*\n` +
       `📝 *الوصف*: ${prop.description}\n` +
       `💰 *السعر*: ${prop.price}\n` +
-      `📍 *الموقع*: ${prop.location}`;
+      `📍 *الموقع*: ${prop.location}` +
+      phoneLine;
 
     if (prop.images && prop.images.length > 0) {
       await tg("sendPhoto", {
