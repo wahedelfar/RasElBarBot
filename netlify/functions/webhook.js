@@ -243,7 +243,19 @@ async function handleMessage(message) {
   const chatType = message.chat.type;
 
   // /start command
-  if (text === "/start" || text === "/menu") {
+  if (text === "/start" || text === "/menu" || text.startsWith("/start ")) {
+    if (text === "/start welcome") {
+      await tg("sendMessage", {
+        chat_id: chatId,
+        text:
+          "🏖 *أهلاً بيك في بوت عقارات رأس البر\!*\n\n" +
+          "أنت في المكان الصح 👌\n" +
+          "هنا هتلاقي أحدث إعلانات الشقق والجراجات والأراضي في رأس البر\n" +
+          "كل الإعلانات بأرقام حقيقية من المالك مباشرة\n\n" +
+          "اختار من القائمة تحت واستكشف 👇",
+        parse_mode: "MarkdownV2",
+      });
+    }
     await sendStart(chatId);
     return;
   }
@@ -264,7 +276,7 @@ async function handleMessage(message) {
 
   // Group keyword auto-reply
   if (chatType === "group" || chatType === "supergroup") {
-    const keywords = ["شقة", "إيجار", "ايجار", "رأس البر", "عقار", "شاليه", "تمليك", "شراء", "بيع", "فيلا", "استثمار", "بحر", "مصيف", "إجازة", "سكن"];
+    const keywords = ["شقة", "إيجار", "ايجار", "رأس البر", "عقار", "شاليه", "تمليك", "شراء", "بيع", "فيلا", "استثمار", "بحر", "مصيف", "إجازة", "سكن", "جراج", "جراش", "أرض", "ارض"];
     const lower = text.toLowerCase();
     if (keywords.some((k) => lower.includes(k))) {
       await tg("sendMessage", {
