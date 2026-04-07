@@ -38,16 +38,17 @@ def escape_markdown(text):
     escape_chars = r'_*[]()~`>#+-=|{}.!'
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', str(text))
 
-# تحميل بيانات العقارات
-def load_properties():
+# تحميل بيانات العقارات والدليل
+def load_json_data(filename):
     try:
-        with open('properties.json', 'r', encoding='utf-8') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        logger.error("properties.json not found!")
+        logger.error(f"{filename} not found!")
         return {}
 
-PROPERTIES_DATA = load_properties()
+PROPERTIES_DATA = load_json_data('properties.json')
+GUIDE_DATA = load_json_data('ras_elbar_guide_data.json')
 
 # إعداد قاعدة بيانات SQLite
 def init_db():
@@ -72,22 +73,17 @@ def get_welcome_message():
         "✨ *ماذا نقدم لك؟*\n"
         "🏠 شقق للبيع والإيجار\n"
         "🏖️ شاليهات فاخرة مطلة على البحر\n"
-        "🌄 أراضي للاستثمار\n"
-        "📞 استشارات عقارية مجانية\n"
+        "🗺️ *دليل رأس البر الذكي لخدمتك*\n"
         "🎯 خدمة حجز سريعة وآمنة\n\n"
         "👇 *اختر ما يناسبك من الأزرار أدناه*"
     )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("🏠 شقق للبيع", callback_data='apartments_sale')],
-        [InlineKeyboardButton("🏖️ شاليهات للبيع", callback_data='chalets_sale')],
-        [InlineKeyboardButton("🌄 أراضي للبيع", callback_data='land_sale')],
-        [InlineKeyboardButton("💰 أسعار التمليك", callback_data='ownership_prices')],
-        [InlineKeyboardButton("🏠 شقق للبيع (كاش/تقسيط)", callback_data='apartments_for_sale')],
-        [InlineKeyboardButton("🏖️ شقق إيجار", callback_data='apartments_rent')],
+        [InlineKeyboardButton("🏠 تصفح العقارات", callback_data='browse_properties')],
+        [InlineKeyboardButton("🏖️ دليل رأس البر الذكي", callback_data='city_guide')],
         [InlineKeyboardButton("📝 إرسال طلب حجز", callback_data='booking_request')],
-        [InlineKeyboardButton("🌐 زور موقعنا للإيجار", url='https://ras-elbar-egar.netlify.app/')],
+        [InlineKeyboardButton("🌐 موقعنا للإيجار", url='https://ras-elbar-egar.netlify.app/')],
         [InlineKeyboardButton("📱 صفحتنا على فيسبوك", url='https://www.facebook.com/akarat.raaselbar')],
         [InlineKeyboardButton("📞 تواصل معنا", callback_data='contact')],
         [InlineKeyboardButton("📢 انضم لمجموعتنا", url=GROUP_INVITE_LINK)]
@@ -99,12 +95,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif update.callback_query:
         await update.callback_query.message.reply_text(text, reply_markup=reply_markup, parse_mode='MarkdownV2')
 
-# معالج انضمام أعضاء جدد للمجموعات والقنوات
+async def browse_properties(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    keyboard = [
+        [InlineKeyboardButton("🏠 شقق للبيع", callback_data='apartments_sale')],
+        [InlineKeyboardButton("🏖️ شاليهات للبيع", callback_data='chalets_sale')],
+        [InlineKeyboardButton("🌄 أراضي للبيع", callback_data='land_sale')],
+        [InlineKeyboardButton("💰 أسعار التمليك", callback_data='ownership_prices')],
+        [InlineKeyboardButton("🏠 شقق للبيع (كاش/تقسيط)", callback_data='apartments_for_sale')],
+        [InlineKeyboardButton("🏖️ شقق إيجار", callback_data='apartments_rent')],
+        [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data='main_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("🏠 *تصفح أفضل العقارات في رأس البر*:\nاختر القسم الذي تود استكشافه:", reply_markup=reply_markup, parse_mode='MarkdownV2')
+
+async def city_guide(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    keyboard = [
+        [InlineKeyboardButton("📍 أهم المعالم السياحية", callback_data='guide_spots')],
+        [InlineKeyboardButton("🍴 أفضل المطاعم والحلويات", callback_data='guide_food')],
+        [InlineKeyboardButton("🚌 المواصلات والخدمات", callback_data='guide_services')],
+        [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data='main_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    message = (
+        "🏖️ *دليل رأس البر الذكي* 🏖️\n\n"
+        "أهلاً بك في دليلك الشامل لمدينة رأس البر الساحرة\\! "
+        "نحن هنا لنجعل إقامتك أسهل وأمتع\\.\n\n"
+        "ماذا تود أن تعرف اليوم؟"
+    )
+    await query.edit_message_text(message, reply_markup=reply_markup, parse_mode='MarkdownV2')
+
 async def handle_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
-    
     if result.status == ChatMemberStatus.MEMBER:
-        # رسالة ترحيب خاصة للأعضاء الجدد في المجموعات
         welcome_text = (
             f"👋 *مرحباً {update.effective_user.first_name}\\!*\n\n"
             "🏖️ أهلاً وسهلاً في مجموعة عقارات رأس البر الفاخرة\\!\n\n"
@@ -117,14 +141,8 @@ async def handle_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌐 موقعنا الإلكتروني", url="https://ras-elbar-egar.netlify.app/")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
         try:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=welcome_text,
-                reply_markup=reply_markup,
-                parse_mode='MarkdownV2'
-            )
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=welcome_text, reply_markup=reply_markup, parse_mode='MarkdownV2')
         except Exception as e:
             logger.error(f"Error sending welcome message: {e}")
 
@@ -159,7 +177,40 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
 
-    if data in PROPERTIES_DATA:
+    if data == 'main_menu':
+        await start(update, context)
+    elif data == 'browse_properties':
+        await browse_properties(update, context)
+    elif data == 'city_guide':
+        await city_guide(update, context)
+    
+    # معالجة أقسام الدليل
+    elif data == 'guide_spots':
+        spots = GUIDE_DATA.get('tourist_spots', [])
+        message = "📍 *أهم المعالم السياحية في رأس البر*:\n\n"
+        for spot in spots:
+            message += f"✨ *{escape_markdown(spot['name'])}*\n📝 {escape_markdown(spot['description'])}\n📍 {escape_markdown(spot['location'])}\n\n"
+        keyboard = [[InlineKeyboardButton("🔙 العودة للدليل", callback_data='city_guide')]]
+        await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='MarkdownV2')
+    
+    elif data == 'guide_food':
+        foods = GUIDE_DATA.get('restaurants', [])
+        message = "🍴 *أفضل المطاعم والحلويات*:\n\n"
+        for food in foods:
+            message += f"🍽️ *{escape_markdown(food['name'])}*\n📝 {escape_markdown(food['description'])}\n🏷️ النوع: {escape_markdown(food['type'])}\n\n"
+        keyboard = [[InlineKeyboardButton("🔙 العودة للدليل", callback_data='city_guide')]]
+        await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='MarkdownV2')
+
+    elif data == 'guide_services':
+        services = GUIDE_DATA.get('transportation', [])
+        message = "🚌 *المواصلات والخدمات*:\n\n"
+        for service in services:
+            message += f"🚍 *{escape_markdown(service['name'])}*\n📝 {escape_markdown(service['description'])}\n💰 {escape_markdown(service.get('price', ''))}\n\n"
+        keyboard = [[InlineKeyboardButton("🔙 العودة للدليل", callback_data='city_guide')]]
+        await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='MarkdownV2')
+
+    # معالجة أقسام العقارات (نفس الكود السابق)
+    elif data in PROPERTIES_DATA:
         properties = PROPERTIES_DATA[data]
         for prop in properties:
             message = (
@@ -186,7 +237,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "➖ المنطقة الأولى: أسعار أعلى حسب المواصفات\\.\n\n"
             "📞 تواصل مع مكتب الوحيد لمزيد من التفاصيل: `01026569682`"
         )
-        await query.message.reply_text(message, parse_mode='MarkdownV2')
+        await query.message.reply_text(message, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 العودة", callback_data='browse_properties')]]), parse_mode='MarkdownV2')
 
     elif data == 'apartments_for_sale':
         message = (
@@ -196,7 +247,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "➖ 💵 *كاش*: استلام فوري\\.\n\n"
             "📞 نرجو الاتصال بمكتب الوحيد لمعرفة الأماكن والأسعار: `01026569682`"
         )
-        await query.message.reply_text(message, parse_mode='MarkdownV2')
+        await query.message.reply_text(message, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 العودة", callback_data='browse_properties')]]), parse_mode='MarkdownV2')
 
     elif data == 'apartments_rent':
         intro = (
@@ -232,7 +283,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "➖ تابع صفحتنا على فيسبوك: [اضغط هنا](https://www.facebook.com/akarat.raaselbar)\n"
             "➖ 📞 اتصل بمكتب الوحيد: `01026569682`"
         )
-        await query.message.reply_text(contact_info, parse_mode='MarkdownV2', disable_web_page_preview=True)
+        await query.message.reply_text(contact_info, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 العودة", callback_data='browse_properties')]]), parse_mode='MarkdownV2', disable_web_page_preview=True)
 
     elif data == 'booking_request':
         await query.message.reply_text("📝 لبدء طلب الحجز، من فضلك أرسل *اسمك بالكامل*:", parse_mode='MarkdownV2')
@@ -333,7 +384,7 @@ def main():
 
     # تشغيل البوت
     port = int(os.getenv('PORT', 5000))
-    domain = os.getenv('RENDER_EXTERNAL_HOSTNAME') or os.getenv('RAILWAY_PUBLIC_DOMAIN')
+    domain = os.getenv('RAILWAY_PUBLIC_DOMAIN')
     
     if domain:
         logger.info(f"Starting webhook on port {port} with domain {domain}")
@@ -349,4 +400,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
