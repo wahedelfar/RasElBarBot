@@ -12,24 +12,9 @@ const GROUP_CHAT_ID = "-1002550095639";
 const propertiesPath = path.resolve(__dirname, "../../properties.json");
 const PROPERTIES = JSON.parse(fs.readFileSync(propertiesPath, "utf-8"));
 
-// Guide Data
-const GUIDE_DATA = {
-  "tourist_spots": [
-    { "name": "منطقة اللسان (الفنار)", "description": "أشهر معالم رأس البر، حيث يلتقي نهر النيل بالبحر المتوسط. تضم ممشى سياحي ساحر، مسرحاً، ومشروع الصوت والضوء.", "location": "نهاية شارع النيل - الشمال الشرقي" },
-    { "name": "شارع النيل", "description": "قلب رأس البر النابض، يضم مئات المحلات والمطاعم والكافيهات، وهو المكان الأمثل للتنزه ليلاً.", "location": "موازٍ لنهر النيل" },
-    { "name": "منطقة الجربي", "description": "منطقة ترفيهية شهيرة تضم نوادي وكافيهات مطلة على النيل مباشرة، وتشتهر بالهدوء والجمال.", "location": "مدخل رأس البر" },
-    { "name": "شاطئ النخيل والخليج", "description": "من أرقى شواطئ رأس البر، تتميز بالهدوء والخدمات الممتازة والمياه الصافية.", "location": "منطقة الامتداد العمراني" }
-  ],
-  "restaurants": [
-    { "name": "مطعم سي دور (Sea Door)", "description": "من أشهر مطاعم الأسماك في رأس البر، يقدم تشكيلة رائعة من المأكولات البحرية الطازجة.", "type": "أسماك" },
-    { "name": "مطعم الطناوي / الكيلاني", "description": "أفضل الأماكن لتناول المشويات والكباب والكفتة في رأس البر.", "type": "مشويات" },
-    { "name": "حلويات البدري / بلبول", "description": "لا تكتمل زيارة رأس البر بدون تجربة المشبك والحلويات الدمياطية الأصلية.", "type": "حلويات" }
-  ],
-  "transportation": [
-    { "name": "الطفطف", "description": "وسيلة المواصلات الأشهر والأمتع في رأس البر، يربط بين شارع النيل والشواطئ.", "price": "أسعار رمزية" },
-    { "name": "أتوبيسات شرق الدلتا", "description": "الوسيلة الأساسية للسفر من وإلى القاهرة والمحافظات.", "location": "موقف رأس البر الرئيسي" }
-  ]
-};
+// Load guide data
+const guidePath = path.resolve(__dirname, "../../ras_elbar_guide_data.json");
+const GUIDE_DATA = JSON.parse(fs.readFileSync(guidePath, "utf-8"));
 
 // ─── Telegram API Helper ───
 function tg(method, body) {
@@ -183,12 +168,23 @@ async function handleCallback(query) {
         parse_mode: "Markdown",
         reply_markup: {
           inline_keyboard: [
+            [{ text: "📜 تاريخ رأس البر العريق", callback_data: "guide_history" }],
             [{ text: "📍 أهم المعالم السياحية", callback_data: "guide_spots" }],
             [{ text: "🍴 أفضل المطاعم والحلويات", callback_data: "guide_food" }],
             [{ text: "🚌 المواصلات والخدمات", callback_data: "guide_services" }],
             [{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }],
           ],
         },
+      });
+      break;
+
+    case "guide_history":
+      await tg("editMessageText", {
+        chat_id: chatId,
+        message_id: query.message.message_id,
+        text: `*${GUIDE_DATA.history.title}*\n\n${GUIDE_DATA.history.content}`,
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: [[{ text: "« رجوع للدليل", callback_data: "city_guide" }]] }
       });
       break;
 
@@ -346,6 +342,17 @@ async function handleMessage(message) {
   const chatId = message.chat.id;
   const text = (message.text || "").trim();
   const chatType = message.chat.type;
+
+  // Admin Broadcast Command: /broadcast <message>
+  if (chatId.toString() === ADMIN_CHAT_ID && text.startsWith("/broadcast ")) {
+    const broadcastMsg = text.replace("/broadcast ", "");
+    // In a real scenario, we'd have a database of user IDs. 
+    // For now, we'll send it to the group and channel as a "broadcast".
+    await tg("sendMessage", { chat_id: GROUP_CHAT_ID, text: "🔔 *تنبيه هام من عقارات رأس البر*\n\n" + broadcastMsg, parse_mode: "Markdown" });
+    await tg("sendMessage", { chat_id: "@raselbarbot", text: "🔔 *تنبيه هام من عقارات رأس البر*\n\n" + broadcastMsg, parse_mode: "Markdown" });
+    await tg("sendMessage", { chat_id: ADMIN_CHAT_ID, text: "✅ تم إرسال الرسالة الجماعية للقناة والمجموعة." });
+    return;
+  }
 
   if (text === "/start" || text === "/menu" || text.startsWith("/start ")) {
     await sendStart(chatId);
