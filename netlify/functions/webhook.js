@@ -9,12 +9,10 @@ const GROUP_INVITE_LINK = "https://t.me/raselbarbot";
 const GROUP_CHAT_ID = "-1002550095639";
 
 // Load properties data
-const propertiesPath = path.resolve(__dirname, "../../properties.json");
-const PROPERTIES = JSON.parse(fs.readFileSync(propertiesPath, "utf-8"));
+const PROPERTIES = require("../../properties.json");
 
 // Load guide data
-const guidePath = path.resolve(__dirname, "../../ras_elbar_guide_data.json");
-const GUIDE_DATA = JSON.parse(fs.readFileSync(guidePath, "utf-8"));
+const GUIDE_DATA = require("../../ras_elbar_guide_data.json");
 
 // ─── Telegram API Helper ───
 function tg(method, body) {
