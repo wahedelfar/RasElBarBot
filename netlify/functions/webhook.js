@@ -1,18 +1,13 @@
 const https = require("https");
-const fs = require("fs");
-const path = require("path");
+const PROPERTIES = require("../../properties.json");
+const GUIDE_DATA = require("../../ras_elbar_guide_data.json");
 
-const BOT_TOKEN = process.env.TELEGRAM_TOKEN || process.env.BOT_TOKEN || "7370819571:AAHycxAHIt8VRm5tM468hePYtgHke6uChhk";
+const BOT_TOKEN = process.env.TELEGRAM_TOKEN || "7370819571:AAHycxAHIt8VRm5tM468hePYtgHke6uChhk";
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || "8084142659";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const GROUP_INVITE_LINK = "https://t.me/raselbarbot";
-const GROUP_CHAT_ID = "-1002550095639";
-
-// Load properties data
-const PROPERTIES = require("../../properties.json");
-
-// Load guide data
-const GUIDE_DATA = require("../../ras_elbar_guide_data.json");
+const GROUP_CHAT_ID = "-1002550095639"; // @raselbarbot
+const CHANNEL_ID = "-1002361644048";    // @e3lan_akary
 
 // ─── Telegram API Helper ───
 function tg(method, body) {
@@ -42,6 +37,7 @@ function buildMainMenu() {
     inline_keyboard: [
       [{ text: "🏠 تصفح العقارات", callback_data: "browse_properties" }],
       [{ text: "🏖️ دليل رأس البر الذكي", callback_data: "city_guide" }],
+      [{ text: "⚖️ معلومات عقارية قانونية", callback_data: "legal_info" }],
       [{ text: "📝 إرسال طلب حجز", callback_data: "booking_request" }],
       [{ text: "🌐 زور موقعنا للإيجار", url: "https://ras-elbar-egar.netlify.app/" }],
       [{ text: "📱 صفحتنا على فيسبوك", url: "https://www.facebook.com/akarat.raaselbar" }],
@@ -50,10 +46,6 @@ function buildMainMenu() {
     ],
   };
 }
-
-const backButton = {
-  inline_keyboard: [[{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }]],
-};
 
 // ─── Welcome Message ───
 function getWelcomeMessage() {
@@ -68,319 +60,153 @@ function getWelcomeMessage() {
     "🏠 شقق للبيع والإيجار\n" +
     "🏖️ شاليهات فاخرة مطلة على البحر\n" +
     "🗺️ *دليل رأس البر الذكي لخدمتك*\n" +
+    "⚖️ *استشارات ومعلومات قانونية عقارية*\n" +
     "🎯 خدمة حجز سريعة وآمنة\n\n" +
     "👇 *اختر ما يناسبك من الأزرار أدناه*"
   );
 }
 
-// ─── Check Group Membership ───
-async function isMember(userId) {
+exports.handler = async (event) => {
+  if (event.httpMethod !== "POST") return { statusCode: 200, body: "OK" };
+  
   try {
-    const res = await tg("getChatMember", { chat_id: GROUP_CHAT_ID, user_id: userId });
-    if (res.ok) {
-      const status = res.result.status;
-      return ["member", "administrator", "creator"].includes(status);
-    }
-    return false;
-  } catch (e) {
-    return false;
-  }
-}
+    const body = JSON.parse(event.body);
+    
+    // Handle Messages
+    if (body.message) {
+      const chatId = body.message.chat.id;
+      const text = body.message.text;
+      const userId = body.message.from.id;
 
-async function sendJoinPrompt(chatId) {
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text:
-      "🔒 *ثانية واحدة بس!*\n\n" +
-      "عشان تشوف الإعلانات والعروض، انضم لجروبنا الأول 👇\n" +
-      "مجاني وهتلاقي فيه كل جديد عن عقارات رأس البر\n\n" +
-      "✅ بعد ما تشترك، ارجع هنا واضغط *تم الاشتراك* 🎉",
-    parse_mode: "Markdown",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "📢 انضم للجروب", url: GROUP_INVITE_LINK }],
-        [{ text: "✅ تم الاشتراك", callback_data: "check_membership" }],
-      ],
-    },
-  });
-}
+      // Broadcast Feature (Admin Only)
+      if (text && text.startsWith("/broadcast") && userId.toString() === ADMIN_CHAT_ID) {
+        const broadcastMsg = text.replace("/broadcast", "").trim();
+        if (broadcastMsg) {
+          const finalMsg = `🔔 *تنبيه هام من عقارات رأس البر*\n\n${broadcastMsg}`;
+          await tg("sendMessage", { chat_id: GROUP_CHAT_ID, text: finalMsg, parse_mode: "Markdown" });
+          await tg("sendMessage", { chat_id: CHANNEL_ID, text: finalMsg, parse_mode: "Markdown" });
+          await tg("sendMessage", { chat_id: chatId, text: "✅ تم إرسال البث للقناة والمجموعة بنجاح!" });
+        }
+        return { statusCode: 200, body: "OK" };
+      }
 
-// ─── Send Start Menu ───
-async function sendStart(chatId) {
-  await tg("sendMessage", {
-    chat_id: chatId,
-    text: getWelcomeMessage(),
-    parse_mode: "Markdown",
-    reply_markup: buildMainMenu(),
-  });
-}
-
-// ─── Handle Callback Queries ───
-async function handleCallback(query) {
-  const chatId = query.message.chat.id;
-  const data = query.data;
-
-  await tg("answerCallbackQuery", { callback_query_id: query.id });
-
-  // Check membership for content sections
-  const protectedSections = ["apartments_sale", "garages_sale", "land_sale", "ownership_prices", "apartments_for_sale", "apartments_rent", "area_inside", "area_extension", "area_mostasharin", "area_kentucky", "area_all"];
-  if (protectedSections.includes(data)) {
-    const userId = query.from.id;
-    const member = await isMember(userId);
-    if (!member) {
-      await sendJoinPrompt(chatId);
-      return;
-    }
-  }
-
-  switch (data) {
-    case "main_menu":
-      await sendStart(chatId);
-      break;
-
-    case "browse_properties":
-      await tg("editMessageText", {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        text: "🏠 *تصفح أفضل العقارات في رأس البر*:\nاختر القسم الذي تود استكشافه:",
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🏠 شقق للبيع", callback_data: "apartments_sale" }],
-            [{ text: "🚗 جراجات للبيع", callback_data: "garages_sale" }],
-            [{ text: "🌄 أراضي للبيع", callback_data: "land_sale" }],
-            [{ text: "💰 أسعار التمليك", callback_data: "ownership_prices" }],
-            [{ text: "🏠 شقق للبيع (كاش/تقسيط)", callback_data: "apartments_for_sale" }],
-            [{ text: "🏖️ شقق إيجار", callback_data: "apartments_rent" }],
-            [{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }],
-          ],
-        },
-      });
-      break;
-
-    case "city_guide":
-      await tg("editMessageText", {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        text: "🏖️ *دليل رأس البر الذكي* 🏖️\n\nأهلاً بك في دليلك الشامل لمدينة رأس البر الساحرة! نحن هنا لنجعل إقامتك أسهل وأمتع.\n\nماذا تود أن تعرف اليوم؟",
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "📜 تاريخ رأس البر العريق", callback_data: "guide_history" }],
-            [{ text: "📍 أهم المعالم السياحية", callback_data: "guide_spots" }],
-            [{ text: "🍴 أفضل المطاعم والحلويات", callback_data: "guide_food" }],
-            [{ text: "🚌 المواصلات والخدمات", callback_data: "guide_services" }],
-            [{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }],
-          ],
-        },
-      });
-      break;
-
-    case "guide_history":
-      await tg("editMessageText", {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        text: `*${GUIDE_DATA.history.title}*\n\n${GUIDE_DATA.history.content}`,
-        parse_mode: "Markdown",
-        reply_markup: { inline_keyboard: [[{ text: "« رجوع للدليل", callback_data: "city_guide" }]] }
-      });
-      break;
-
-    case "guide_spots": {
-      let msg = "📍 *أهم المعالم السياحية في رأس البر*:\n\n";
-      GUIDE_DATA.tourist_spots.forEach(s => {
-        msg += `✨ *${s.name}*\n📝 ${s.description}\n📍 ${s.location}\n\n`;
-      });
-      await tg("editMessageText", {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        text: msg,
-        parse_mode: "Markdown",
-        reply_markup: { inline_keyboard: [[{ text: "« رجوع للدليل", callback_data: "city_guide" }]] }
-      });
-      break;
-    }
-
-    case "guide_food": {
-      let msg = "🍴 *أفضل المطاعم والحلويات*:\n\n";
-      GUIDE_DATA.restaurants.forEach(f => {
-        msg += `🍽️ *${f.name}*\n📝 ${f.description}\n🏷️ النوع: ${f.type}\n\n`;
-      });
-      await tg("editMessageText", {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        text: msg,
-        parse_mode: "Markdown",
-        reply_markup: { inline_keyboard: [[{ text: "« رجوع للدليل", callback_data: "city_guide" }]] }
-      });
-      break;
-    }
-
-    case "guide_services": {
-      let msg = "🚌 *المواصلات والخدمات*:\n\n";
-      GUIDE_DATA.transportation.forEach(s => {
-        msg += `🚍 *${s.name}*\n📝 ${s.description}\n💰 ${s.price}\n\n`;
-      });
-      await tg("editMessageText", {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        text: msg,
-        parse_mode: "Markdown",
-        reply_markup: { inline_keyboard: [[{ text: "« رجوع للدليل", callback_data: "city_guide" }]] }
-      });
-      break;
-    }
-
-    case "check_membership": {
-      const userId = query.from.id;
-      const member = await isMember(userId);
-      if (member) {
-        await tg("sendMessage", { chat_id: chatId, text: "🎉 *تمام، أنت معانا!*\nاتفضل اختار اللي يعجبك 👇", parse_mode: "Markdown" });
-        await sendStart(chatId);
-      } else {
+      // Start Command
+      if (text === "/start") {
         await tg("sendMessage", {
           chat_id: chatId,
-          text: "😅 *لسه مشتركتش!*\nاضغط على الزر ده وانضم، وبعدين ارجع اضغط تم الاشتراك",
+          text: getWelcomeMessage(),
           parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "📢 انضم للجروب", url: GROUP_INVITE_LINK }],
-              [{ text: "✅ تم الاشتراك", callback_data: "check_membership" }],
-            ],
-          },
+          reply_markup: buildMainMenu(),
         });
       }
-      break;
-    }
-
-    case "apartments_sale":
-      await tg("editMessageText", {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        text: "🏠 *شقق تمليك في رأس البر*\n━━━━━━━━━━━━━━━━\n\nحدد المنطقة اللي تهمك 👇",
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🌊 داخل رأس البر (الشوارع المرقمة)", callback_data: "area_inside" }],
-            [{ text: "🏗️ الامتداد العمراني", callback_data: "area_extension" }],
-            [{ text: "🏢 المستشارين", callback_data: "area_mostasharin" }],
-            [{ text: "🏪 العاصي وكنتاكي", callback_data: "area_kentucky" }],
-            [{ text: "📜 عرض كل الشقق", callback_data: "area_all" }],
-            [{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }],
-          ],
-        },
-      });
-      break;
-
-    case "area_inside":
-    case "area_extension":
-    case "area_mostasharin":
-    case "area_kentucky":
-    case "area_all": {
-      const areaKey = data.replace("area_", "");
-      const areaNames = { inside: "🌊 داخل رأس البر", extension: "🏗️ الامتداد العمراني", mostasharin: "🏢 المستشارين", kentucky: "🏪 العاصي وكنتاكي", all: "📜 كل الشقق" };
-      const allApts = PROPERTIES["apartments_sale"] || [];
-      const filtered = areaKey === "all" ? allApts : allApts.filter(p => p.area === areaKey);
       
-      if (!filtered || filtered.length === 0) {
-        await tg("sendMessage", { chat_id: chatId, text: `لا توجد إعلانات حالياً في *${areaNames[areaKey]}*\n\n📞 كلمنا وهنوفرلك: \`01026569682\``, parse_mode: "Markdown", reply_markup: { inline_keyboard: [[{ text: "« رجوع للمناطق", callback_data: "apartments_sale" }], [{ text: "🏠 القائمة الرئيسية", callback_data: "main_menu" }]] } });
-      } else {
-        await tg("sendMessage", { chat_id: chatId, text: `${areaNames[areaKey]} — *${filtered.length} إعلان*`, parse_mode: "Markdown" });
-        for (const prop of filtered) {
-          const caption = `🏠 *${prop.name}*\n📝 *الوصف*: ${prop.description}\n💰 *السعر*: ${prop.price}\n📍 *الموقع*: ${prop.location}${prop.phone ? `\n📞 *للتواصل*: ${prop.phone}` : ''}`;
-          if (prop.images && prop.images.length > 0) { await tg("sendPhoto", { chat_id: chatId, photo: prop.images[0], caption, parse_mode: "Markdown" }); }
-          else { await tg("sendMessage", { chat_id: chatId, text: caption, parse_mode: "Markdown" }); }
-        }
-        await tg("sendMessage", { chat_id: chatId, text: "📞 للمزيد من التفاصيل تواصل معنا: `01026569682`", parse_mode: "Markdown", reply_markup: { inline_keyboard: [[{ text: "« رجوع للمناطق", callback_data: "apartments_sale" }], [{ text: "🏠 القائمة الرئيسية", callback_data: "main_menu" }]] } });
+      // Keyword Auto-Reply in Groups
+      const keywords = ["شقة", "ايجار", "إيجار", "بيع", "تمليك", "جراج", "حجز"];
+      if (text && keywords.some(k => text.includes(k)) && chatId.toString() === GROUP_CHAT_ID) {
+        await tg("sendMessage", {
+          chat_id: chatId,
+          text: "🏠 *تبحث عن عقار في رأس البر؟*\n\nتفضل بزيارة البوت الخاص بنا لتصفح أحدث العروض والحجوزات مباشرة 👇",
+          reply_markup: {
+            inline_keyboard: [[{ text: "🤖 افتح البوت الآن", url: "https://t.me/raselbarakarbot?start=welcome" }]]
+          }
+        });
       }
-      break;
     }
 
-    case "garages_sale":
-    case "land_sale":
-    case "apartments_rent": {
-      const props = PROPERTIES[data];
-      if (!props || props.length === 0) {
-        await tg("sendMessage", { chat_id: chatId, text: "لا توجد عقارات متاحة حالياً في هذا القسم.", reply_markup: backButton });
-      } else {
-        for (const prop of props) {
-          const caption = `🏠 *${prop.name}*\n📝 *الوصف*: ${prop.description}\n💰 *السعر*: ${prop.price}\n📍 *الموقع*: ${prop.location}${prop.phone ? `\n📞 *للتواصل*: ${prop.phone}` : ''}`;
-          if (prop.images && prop.images.length > 0) { await tg("sendPhoto", { chat_id: chatId, photo: prop.images[0], caption, parse_mode: "Markdown" }); }
-          else { await tg("sendMessage", { chat_id: chatId, text: caption, parse_mode: "Markdown" }); }
-        }
-        await tg("sendMessage", { chat_id: chatId, text: "📞 للمزيد من التفاصيل تواصل معنا: `01026569682`", parse_mode: "Markdown", reply_markup: backButton });
+    // Handle Callback Queries
+    if (body.callback_query) {
+      const query = body.callback_query;
+      const chatId = query.message.chat.id;
+      const data = query.data;
+
+      await tg("answerCallbackQuery", { callback_query_id: query.id });
+
+      switch (data) {
+        case "main_menu":
+          await tg("editMessageText", {
+            chat_id: chatId,
+            message_id: query.message.message_id,
+            text: getWelcomeMessage(),
+            parse_mode: "Markdown",
+            reply_markup: buildMainMenu(),
+          });
+          break;
+
+        case "city_guide":
+          await tg("editMessageText", {
+            chat_id: chatId,
+            message_id: query.message.message_id,
+            text: "🏖️ *دليل رأس البر الذكي* 🏖️\n\nأهلاً بك في دليلك الشامل لمدينة رأس البر الساحرة!\n\nماذا تود أن تعرف اليوم؟",
+            parse_mode: "Markdown",
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "📜 تاريخ رأس البر العريق", callback_data: "guide_history" }],
+                [{ text: "📍 أهم المعالم السياحية", callback_data: "guide_spots" }],
+                [{ text: "🍴 أفضل المطاعم والحلويات", callback_data: "guide_food" }],
+                [{ text: "🚌 المواصلات والخدمات", callback_data: "guide_services" }],
+                [{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }],
+              ],
+            },
+          });
+          break;
+
+        case "legal_info":
+          await tg("editMessageText", {
+            chat_id: chatId,
+            message_id: query.message.message_id,
+            text: "⚖️ *معلومات عقارية قانونية هامة*\n\n" +
+                  "1️⃣ *التسجيل العقاري*: تأكد دائماً من صحة تسلسل الملكية ووجود عقد مسجل أو صحة توقيع.\n" +
+                  "2️⃣ *تراخيص البناء*: تأكد من أن العقار غير مخالف لقوانين البناء في رأس البر.\n" +
+                  "3️⃣ *عقود الإيجار*: يفضل دائماً توثيق عقود الإيجار لضمان حقوق الطرفين.\n" +
+                  "4️⃣ *المرافق*: تأكد من سداد كافة فواتير الكهرباء والمياه قبل الشراء.\n\n" +
+                  "📞 للاستفسارات القانونية المفصلة، يمكنك التواصل معنا مباشرة.",
+            parse_mode: "Markdown",
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "📞 تواصل مع المستشار", callback_data: "contact" }],
+                [{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }],
+              ],
+            },
+          });
+          break;
+
+        case "browse_properties":
+          await tg("editMessageText", {
+            chat_id: chatId,
+            message_id: query.message.message_id,
+            text: "🏠 *تصفح أفضل العقارات في رأس البر*:\nاختر القسم الذي تود استكشافه:",
+            parse_mode: "Markdown",
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🏠 شقق للبيع", callback_data: "apartments_sale" }],
+                [{ text: "🚗 جراجات للبيع", callback_data: "garages_sale" }],
+                [{ text: "🏖️ شقق إيجار", callback_data: "apartments_rent" }],
+                [{ text: "« الرجوع للقائمة الرئيسية", callback_data: "main_menu" }],
+              ],
+            },
+          });
+          break;
+
+        case "contact":
+          await tg("sendMessage", {
+            chat_id: chatId,
+            text: "📞 *يسعدنا تواصلك معنا مباشرة:*\n\n" +
+                  "📱 واتساب: [اضغط هنا](https://wa.me/201026569682)\n" +
+                  "☎️ اتصال: `01026569682`\n\n" +
+                  "📍 العنوان: رأس البر - شارع 85 فيلا 31",
+            parse_mode: "Markdown",
+            disable_web_page_preview: true,
+            reply_markup: { inline_keyboard: [[{ text: "« الرجوع", callback_data: "main_menu" }]] }
+          });
+          break;
+          
+        // Add other cases as needed...
       }
-      break;
     }
 
-    case "ownership_prices":
-      await tg("sendMessage", {
-        chat_id: chatId,
-        text: "💰 *أسعار التمليك في رأس البر (2025/2026)*\n━━━━━━━━━━━━━━━━\n\n📊 *متوسط سعر المتر*: حوالي *29,700 جنيه/م²*\n\n🏠 *عمارات المستشارين*:\n➖ غرفتين (60 م²): من *900,000* إلى *1,200,000 جنيه*\n➖ 3 غرف: من *1,200,000* إلى *1,500,000 جنيه*\n\n🏙️ *الامتداد العمراني*:\n➖ غرفتين (60 م²): من *1,200,000* إلى *1,900,000 جنيه*\n➖ أجنحة (120 م²): تصل إلى *5,000,000 جنيه*\n\n📞 تواصل معنا: `01026569682`",
-        parse_mode: "Markdown",
-        reply_markup: backButton,
-      });
-      break;
-
-    case "booking_request":
-      await tg("sendMessage", { chat_id: chatId, text: "📝 لبدء طلب الحجز، من فضلك أرسل رسالة تحتوي على:\n1. اسمك بالكامل\n2. رقم تليفونك\n3. اسم الشقة أو نوع الطلب\n\nوسنتواصل معك فوراً!", parse_mode: "Markdown", reply_markup: backButton });
-      break;
-
-    case "contact":
-      await tg("sendMessage", { chat_id: chatId, text: "📞 *تواصل مع مكتب الوحيد للاستثمار العقاري*:\n➖ رقم الهاتف: `01026569682`\n➖ واتساب: `01026569682`\n➖ العنوان: رأس البر، شارع 85 فيلا 31", parse_mode: "Markdown", reply_markup: backButton });
-      break;
-
-    default:
-      await sendStart(chatId);
-  }
-}
-
-// ─── Handle Text Messages ───
-async function handleMessage(message) {
-  const chatId = message.chat.id;
-  const text = (message.text || "").trim();
-  const chatType = message.chat.type;
-
-  // Admin Broadcast Command: /broadcast <message>
-  if (chatId.toString() === ADMIN_CHAT_ID && text.startsWith("/broadcast ")) {
-    const broadcastMsg = text.replace("/broadcast ", "");
-    // In a real scenario, we'd have a database of user IDs. 
-    // For now, we'll send it to the group and channel as a "broadcast".
-    await tg("sendMessage", { chat_id: GROUP_CHAT_ID, text: "🔔 *تنبيه هام من عقارات رأس البر*\n\n" + broadcastMsg, parse_mode: "Markdown" });
-    await tg("sendMessage", { chat_id: "@raselbarbot", text: "🔔 *تنبيه هام من عقارات رأس البر*\n\n" + broadcastMsg, parse_mode: "Markdown" });
-    await tg("sendMessage", { chat_id: ADMIN_CHAT_ID, text: "✅ تم إرسال الرسالة الجماعية للقناة والمجموعة." });
-    return;
-  }
-
-  if (text === "/start" || text === "/menu" || text.startsWith("/start ")) {
-    await sendStart(chatId);
-    return;
-  }
-
-  if (chatType === "group" || chatType === "supergroup") {
-    const keywords = ["شقة", "إيجار", "ايجار", "رأس البر", "عقار", "شاليه", "تمليك", "شراء", "بيع", "فيلا", "استثمار", "بحر", "مصيف", "إجازة", "سكن"];
-    if (keywords.some(k => text.toLowerCase().includes(k))) {
-      await tg("sendMessage", { chat_id: chatId, text: "🏖️ *عروض عقارات رأس البر!*\nشقق إيجار وتمليك بأسعار مميزة! 🏠\n📞 تواصل معنا: `01026569682`\n📢 انضم لمجموعتنا: " + GROUP_INVITE_LINK, parse_mode: "Markdown", disable_web_page_preview: true });
-    }
-    return;
-  }
-
-  if (chatType === "private" && text.length > 5) {
-    await tg("sendMessage", { chat_id: ADMIN_CHAT_ID, text: `🔔 *رسالة جديدة من مستخدم*\n👤 *الاسم*: ${message.from.first_name}\n🆔 *ID*: ${message.from.id}\n📝 *الرسالة*:\n${text}`, parse_mode: "Markdown" });
-    await tg("sendMessage", { chat_id: chatId, text: "✅ تم استلام رسالتك! سنتواصل معك قريباً.\n📞 أو تواصل مباشرة: `01026569682`", parse_mode: "Markdown", reply_markup: backButton });
-  }
-}
-
-// ─── Netlify Function Handler ───
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") return { statusCode: 200, body: "✅ RasElBarBot is running!" };
-  try {
-    const update = JSON.parse(event.body);
-    if (update.callback_query) await handleCallback(update.callback_query);
-    else if (update.message) await handleMessage(update.message);
     return { statusCode: 200, body: "OK" };
-  } catch (error) {
-    console.error("Error:", error);
+  } catch (e) {
+    console.error(e);
     return { statusCode: 200, body: "OK" };
   }
 };
