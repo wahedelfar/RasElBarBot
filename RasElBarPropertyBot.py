@@ -3,7 +3,7 @@ import json
 import sqlite3
 import logging
 import re
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ChatMember
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -11,10 +11,7 @@ from telegram.ext import (
     MessageHandler,
     ContextTypes,
     filters,
-    ConversationHandler,
-    ChatMemberHandler,
 )
-from telegram.constants import ChatMemberStatus
 
 # إعداد التسجيل (Logging)
 logging.basicConfig(
@@ -24,12 +21,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # تحميل الإعدادات من المتغيرات البيئية
-TOKEN = os.getenv('TELEGRAM_TOKEN', '7370819571:AAF697gifhVCaY6Y5JpVxvJj8AUdqyi6u04')
+TOKEN = os.getenv('TELEGRAM_TOKEN', '7370819571:AAHycxAHIt8VRm5tM468hePYtgHke6uChhk')
 ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', '8084142659')
 GROUP_INVITE_LINK = 'https://t.me/raselbarbot'
-
-# حالات المحادثة للحجز
-GET_NAME, GET_PHONE, GET_APARTMENT, GET_DATES = range(4)
+CHANNEL_LINK = 'https://t.me/e3lan_akary'
 
 # دالة لتنظيف النصوص لـ MarkdownV2
 def escape_markdown(text):
@@ -50,17 +45,6 @@ def load_json_data(filename):
 PROPERTIES_DATA = load_json_data('properties.json')
 GUIDE_DATA = load_json_data('ras_elbar_guide_data.json')
 
-# إعداد قاعدة بيانات SQLite
-def init_db():
-    conn = sqlite3.connect('bookings.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS bookings
-                 (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, phone TEXT, apartment TEXT, dates TEXT, timestamp TEXT)''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
 # رسالة الترحيب الفاخرة
 def get_welcome_message():
     return (
@@ -74,6 +58,7 @@ def get_welcome_message():
         "🏠 شقق للبيع والإيجار\n"
         "🏖️ شاليهات فاخرة مطلة على البحر\n"
         "🗺️ *دليل رأس البر الذكي لخدمتك*\n"
+        "⚖️ *نصائح عقارية وقانونية تهمك*\n"
         "🎯 خدمة حجز سريعة وآمنة\n\n"
         "👇 *اختر ما يناسبك من الأزرار أدناه*"
     )
@@ -82,28 +67,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🏠 تصفح العقارات", callback_data='browse_properties')],
         [InlineKeyboardButton("🏖️ دليل رأس البر الذكي", callback_data='city_guide')],
+        [InlineKeyboardButton("⚖️ نصائح عقارية وقانونية", callback_data='legal_tips')],
         [InlineKeyboardButton("📝 إرسال طلب حجز", callback_data='booking_request')],
-        [InlineKeyboardButton("🌐 موقعنا للإيجار", url='https://ras-elbar-egar.netlify.app/')],
-        [InlineKeyboardButton("📱 صفحتنا على فيسبوك", url='https://www.facebook.com/akarat.raaselbar')],
+        [InlineKeyboardButton("🌐 موقعنا للإيجار", url='https://egarat.netlify.app/')],
         [InlineKeyboardButton("📞 تواصل معنا", callback_data='contact')],
-        [InlineKeyboardButton("📢 انضم لمجموعتنا", url=GROUP_INVITE_LINK)]
+        [InlineKeyboardButton("📢 انضم لقناتنا", url=CHANNEL_LINK)],
+        [InlineKeyboardButton("👥 مجموعتنا على تليجرام", url=GROUP_INVITE_LINK)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     text = get_welcome_message()
+    
     if update.message:
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='MarkdownV2')
     elif update.callback_query:
-        await update.callback_query.message.reply_text(text, reply_markup=reply_markup, parse_mode='MarkdownV2')
+        await update.callback_query.message.edit_text(text, reply_markup=reply_markup, parse_mode='MarkdownV2')
 
 async def browse_properties(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     keyboard = [
         [InlineKeyboardButton("🏠 شقق للبيع", callback_data='apartments_sale')],
-        [InlineKeyboardButton("🏖️ شاليهات للبيع", callback_data='chalets_sale')],
-        [InlineKeyboardButton("🌄 أراضي للبيع", callback_data='land_sale')],
-        [InlineKeyboardButton("💰 أسعار التمليك", callback_data='ownership_prices')],
-        [InlineKeyboardButton("🏠 شقق للبيع (كاش/تقسيط)", callback_data='apartments_for_sale')],
         [InlineKeyboardButton("🏖️ شقق إيجار", callback_data='apartments_rent')],
+        [InlineKeyboardButton("🌄 أراضي وجراجات", callback_data='land_sale')],
         [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data='main_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -126,51 +110,32 @@ async def city_guide(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await query.edit_message_text(message, reply_markup=reply_markup, parse_mode='MarkdownV2')
 
-async def handle_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    result = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
-    if result.status == ChatMemberStatus.MEMBER:
-        welcome_text = (
-            f"👋 *مرحباً {update.effective_user.first_name}\\!*\n\n"
-            "🏖️ أهلاً وسهلاً في مجموعة عقارات رأس البر الفاخرة\\!\n\n"
-            "نحن هنا لمساعدتك في إيجاد أفضل العقارات والشقق في رأس البر\\.\n"
-            "اضغط على الزر أدناه لتصفح عروضنا المميزة\\:"
-        )
-        keyboard = [
-            [InlineKeyboardButton("🏠 تصفح العقارات", url=f"https://t.me/raselbarbot_bot?start=welcome")],
-            [InlineKeyboardButton("📞 تواصل فوري", url="https://wa.me/201026569682")],
-            [InlineKeyboardButton("🌐 موقعنا الإلكتروني", url="https://ras-elbar-egar.netlify.app/")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        try:
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=welcome_text, reply_markup=reply_markup, parse_mode='MarkdownV2')
-        except Exception as e:
-            logger.error(f"Error sending welcome message: {e}")
+async def legal_tips(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    text = (
+        "⚖️ *نصائح عقارية وقانونية هامة* ⚖️\n\n"
+        "1️⃣ *التأكد من الملكية*: يجب مراجعة تسلسل الملكية وعقد البيع الأصلي\\.\n"
+        "2️⃣ *التراخيص*: تأكد من أن العقار مرخص وليس عليه مخالفات بناء\\.\n"
+        "3️⃣ *المرافق*: تحقق من سداد كافة فواتير الكهرباء والمياه\\.\n"
+        "4️⃣ *عقود الإيجار*: تأكد من توثيق العقد في الشهر العقاري لضمان حقك\\.\n\n"
+        "💡 *نصيحة*: لا تدفع مبالغ كبيرة قبل المعاينة الفعلية والتأكد من الأوراق\\."
+    )
+    keyboard = [[InlineKeyboardButton("🔙 العودة", callback_data='main_menu')]]
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='MarkdownV2')
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
     message = (
-        "📞 *تواصل مع مكتب الوحيد للاستثمار العقاري*:\n"
+        "📞 *تواصل مع مكتب الوحيد للاستثمار العقاري*:\n\n"
         "➖ رقم الهاتف: `01026569682`\n"
-        "➖ واتساب: `01026569682`\n"
+        "➖ واتساب: [اضغط هنا](https://wa.me/201026569682)\n"
         "➖ العنوان: رأس البر، شارع 85 فيلا 31"
     )
-    if update.message:
-        await update.message.reply_text(escape_markdown(message), parse_mode='MarkdownV2')
-    elif update.callback_query:
-        await update.callback_query.message.reply_text(escape_markdown(message), parse_mode='MarkdownV2')
-
-async def group_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.chat.type in ['group', 'supergroup']:
-        text = update.message.text.lower()
-        keywords = ['شقة', 'إيجار', 'ايجار', 'رأس البر', 'عقار', 'شاليه', 'تمليك', 'شراء', 'بيع', 'فيلا', 'استثمار', 'بحر', 'مصيف', 'إجازة', 'سكن']
-        if any(keyword in text for keyword in keywords):
-            message = (
-                "🏖️ *عروض عقارات رأس البر\\!*\n"
-                "شقق إيجار وتمليك بأسعار مميزة\\! 🏠\n"
-                "📞 تواصل معنا: `01026569682`\n"
-                f"📢 انضم لمجموعتنا: {escape_markdown(GROUP_INVITE_LINK)}\n"
-                "🌐 زور موقعنا: [اضغط هنا](https://ras-elbar-egar.netlify.app/)"
-            )
-            await update.message.reply_text(message, parse_mode='MarkdownV2', disable_web_page_preview=True)
+    keyboard = [[InlineKeyboardButton("🔙 العودة", callback_data='main_menu')]]
+    if query:
+        await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='MarkdownV2', disable_web_page_preview=True)
+    else:
+        await update.message.reply_text(message, parse_mode='MarkdownV2', disable_web_page_preview=True)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -183,6 +148,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await browse_properties(update, context)
     elif data == 'city_guide':
         await city_guide(update, context)
+    elif data == 'legal_tips':
+        await legal_tips(update, context)
+    elif data == 'contact':
+        await contact(update, context)
     
     # معالجة أقسام الدليل
     elif data == 'guide_spots':
@@ -209,194 +178,32 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🔙 العودة للدليل", callback_data='city_guide')]]
         await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='MarkdownV2')
 
-    # معالجة أقسام العقارات (نفس الكود السابق)
+    # معالجة أقسام العقارات
     elif data in PROPERTIES_DATA:
         properties = PROPERTIES_DATA[data]
-        for prop in properties:
-            message = (
-                f"🏠 *{escape_markdown(prop['name'])}*\n"
-                f"📝 *الوصف*: {escape_markdown(prop['description'])}\n"
-                f"💰 *السعر*: {escape_markdown(prop['price'])}\n"
-                f"📍 *الموقع*: {escape_markdown(prop['location'])}"
-            )
-            if prop.get('images'):
-                await query.message.reply_photo(photo=prop['images'][0], caption=message, parse_mode='MarkdownV2')
-            else:
-                await query.message.reply_text(message, parse_mode='MarkdownV2')
-
-    elif data == 'ownership_prices':
-        message = (
-            "💰 *أسعار التمليك في رأس البر*:\n\n"
-            "🏠 *عمارات المستشارين*:\n"
-            "➖ الأسعار تبدأ من *900,000 جنيه*\\.\n\n"
-            "🏙️ *الامتداد العمراني*:\n"
-            "➖ شقق غرفتين \\(60 متر\\): من *1,200,000* إلى *1,900,000 جنيه*\\.\n"
-            "➖ أجنحة \\(120 متر\\): تصل إلى *5,000,000 جنيه* حسب الموقع والتشطيب\\.\n\n"
-            "🌊 *شوارع رأس البر الرئيسية*:\n"
-            "➖ الفيلات: من *1,700,000* إلى *6,000,000 جنيه* حسب العمر، الموقع، والاتجاه\\.\n"
-            "➖ المنطقة الأولى: أسعار أعلى حسب المواصفات\\.\n\n"
-            "📞 تواصل مع مكتب الوحيد لمزيد من التفاصيل: `01026569682`"
-        )
-        await query.message.reply_text(message, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 العودة", callback_data='browse_properties')]]), parse_mode='MarkdownV2')
-
-    elif data == 'apartments_for_sale':
-        message = (
-            "🏠 *شقق للبيع في رأس البر*:\n\n"
-            "لدينا العديد من الشقق في شوارع وأماكن مختلفة:\n"
-            "➖ 🏗️ *تقسيط حتى سنة*: شقق تحت الإنشاء\\.\n"
-            "➖ 💵 *كاش*: استلام فوري\\.\n\n"
-            "📞 نرجو الاتصال بمكتب الوحيد لمعرفة الأماكن والأسعار: `01026569682`"
-        )
-        await query.message.reply_text(message, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 العودة", callback_data='browse_properties')]]), parse_mode='MarkdownV2')
-
-    elif data == 'apartments_rent':
-        intro = (
-            "🏖️ *شقق إيجار في رأس البر*:\n\n"
-            "💰 *أسعار الإيجار* تتحدد حسب التوقيت، الموقع، القرب من البحر، ومستوى الشقة:\n"
-            "➖ *قبل الموسم \\(قبل يونيو\\)*:\n"
-            "  ➖ شقق من *250\\-300 جنيه/اليوم*\\.\n"
-            "  ➖ أول مطل: حتى *1,500 جنيه/اليوم*\\.\n"
-            "➖ *موسم الصيف \\(يونيو وما بعد\\)*:\n"
-            "  ➖ الأسعار ترتفع مع الازدحام \\(الطلب أعلى من العرض\\)\\.\n"
-            "  ➖ أول مطل: تصل إلى *4,000 جنيه/اليوم*\\.\n\n"
-            "🏠 *شقق الإيجار المتاحة*:"
-        )
-        await query.message.reply_text(intro, parse_mode='MarkdownV2')
-        
-        rentals = PROPERTIES_DATA.get('apartments_rent', [])
-        for prop in rentals:
+        # إرسال أول 5 عقارات لتجنب الرسائل الطويلة جداً
+        for prop in properties[:5]:
             message = (
                 f"🏠 *{escape_markdown(prop['name'])}*\n"
                 f"📝 *الوصف*: {escape_markdown(prop['description'])}\n"
                 f"💰 *السعر*: {escape_markdown(prop['price'])}\n"
                 f"📍 *الموقع*: {escape_markdown(prop['location'])}\n"
-                f"📞 تواصل للحجز: `01026569682`"
+                f"📞 *للتواصل*: `01026569682`"
             )
-            if prop.get('images'):
-                await query.message.reply_photo(photo=prop['images'][0], caption=message, parse_mode='MarkdownV2')
-            else:
-                await query.message.reply_text(message, parse_mode='MarkdownV2')
+            await query.message.reply_text(message, parse_mode='MarkdownV2')
         
-        contact_info = (
-            "🔗 *لمعرفة المتاح والأسعار*:\n"
-            "➖ زور موقعنا: [اضغط هنا](https://ras-elbar-egar.netlify.app/)\n"
-            "➖ تابع صفحتنا على فيسبوك: [اضغط هنا](https://www.facebook.com/akarat.raaselbar)\n"
-            "➖ 📞 اتصل بمكتب الوحيد: `01026569682`"
-        )
-        await query.message.reply_text(contact_info, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 العودة", callback_data='browse_properties')]]), parse_mode='MarkdownV2', disable_web_page_preview=True)
-
-    elif data == 'booking_request':
-        await query.message.reply_text("📝 لبدء طلب الحجز، من فضلك أرسل *اسمك بالكامل*:", parse_mode='MarkdownV2')
-        return GET_NAME
-
-    elif data == 'contact':
-        await contact(update, context)
-
-# معالجة محادثة الحجز
-async def booking_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    await query.message.reply_text("📝 لبدء طلب الحجز، من فضلك أرسل *اسمك بالكامل*:", parse_mode='MarkdownV2')
-    return GET_NAME
-
-async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['name'] = update.message.text
-    await update.message.reply_text(f"أهلاً بك {update.message.text}\\! الآن أرسل *رقم تليفونك*:", parse_mode='MarkdownV2')
-    return GET_PHONE
-
-async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['phone'] = update.message.text
-    await update.message.reply_text("تمام\\! ما هو *اسم الشقة* التي تود حجزها؟", parse_mode='MarkdownV2')
-    return GET_APARTMENT
-
-async def get_apartment(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['apartment'] = update.message.text
-    await update.message.reply_text("أخيراً، ما هي *تواريخ الحجز* المطلوبة؟ (مثلاً: من 1-6 إلى 5-6)", parse_mode='MarkdownV2')
-    return GET_DATES
-
-async def get_dates(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['dates'] = update.message.text
-    user_id = update.message.from_user.id
-    name = context.user_data['name']
-    phone = context.user_data['phone']
-    apartment = context.user_data['apartment']
-    dates = context.user_data['dates']
-    timestamp = str(update.message.date)
-
-    # حفظ في قاعدة البيانات
-    conn = sqlite3.connect('bookings.db')
-    c = conn.cursor()
-    c.execute("INSERT INTO bookings (user_id, name, phone, apartment, dates, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-              (user_id, name, phone, apartment, dates, timestamp))
-    conn.commit()
-    conn.close()
-
-    await update.message.reply_text("✅ تم تسجيل طلب الحجز بنجاح\\! سنتواصل معك قريبًا للتأكيد\\.", parse_mode='MarkdownV2')
-
-    # إشعار للمسؤول
-    admin_message = (
-        f"🔔 *طلب حجز جديد*\n\n"
-        f"👤 *الاسم*: {escape_markdown(name)}\n"
-        f"📱 *رقم التليفون*: `{escape_markdown(phone)}`\n"
-        f"🏠 *الشقة*: {escape_markdown(apartment)}\n"
-        f"📅 *التواريخ*: {escape_markdown(dates)}\n"
-        f"🕒 *الوقت*: {escape_markdown(timestamp)}"
-    )
-    try:
-        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_message, parse_mode='MarkdownV2')
-    except Exception as e:
-        logger.error(f"Error sending admin notification: {e}")
-
-    return ConversationHandler.END
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("تم إلغاء طلب الحجز\\.", parse_mode='MarkdownV2')
-    return ConversationHandler.END
+        keyboard = [[InlineKeyboardButton("🔙 العودة للتصنيفات", callback_data='browse_properties')]]
+        await query.message.reply_text("استعرضنا لك أبرز العروض المتاحة حالياً\\.", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='MarkdownV2')
 
 def main():
-    if not TOKEN:
-        logger.error("No token provided!")
-        return
+    application = Application.builder().token(TOKEN).build()
 
-    app = Application.builder().token(TOKEN).build()
-
-    # إعداد ConversationHandler للحجز
-    booking_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(booking_start, pattern='^booking_request$')],
-        states={
-            GET_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
-            GET_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
-            GET_APARTMENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_apartment)],
-            GET_DATES: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_dates)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
-
-    # معالج انضمام الأعضاء الجدد
-    app.add_handler(ChatMemberHandler(handle_new_member, ChatMemberHandler.MY_CHAT_MEMBER))
-
-    app.add_handler(CommandHandler('start', start))
-    app.add_handler(CommandHandler('contact', contact))
-    app.add_handler(CommandHandler('menu', start))
-    app.add_handler(booking_conv)
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUPS, group_message_handler))
-
-    # تشغيل البوت
-    port = int(os.getenv('PORT', 5000))
-    domain = os.getenv('RAILWAY_PUBLIC_DOMAIN')
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_handler))
     
-    if domain:
-        logger.info(f"Starting webhook on port {port} with domain {domain}")
-        app.run_webhook(
-            listen='0.0.0.0',
-            port=port,
-            url_path=TOKEN,
-            webhook_url=f'https://{domain}/{TOKEN}'
-        )
-    else:
-        logger.info("Starting polling...")
-        app.run_polling()
+    # تشغيل البوت
+    logger.info("Bot started...")
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
